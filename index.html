@@ -1,0 +1,366 @@
+<!doctype html> 
+<html lang="en"> 
+<head> 
+    <meta charset="UTF-8" />
+    <title>Fast Food</title>
+    <link rel="preload" as="font" href="assets/font/font.ttf" type="font/ttf" />
+    <script src="phaser.js"></script>
+    <style type="text/css">
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+
+        @font-face {
+            font-family: CustomFont;
+            src: url('./Custom-Font.ttf');
+            font-size: large;
+        }
+    </style>
+</head>
+<body>
+<script type="text/javascript">
+
+    var config = {
+        type: Phaser.AUTO,
+        width: 1920,
+        height: 1080,
+        physics: {
+            default: 'arcade',
+            arcade: {
+                gravity: { y: 400 },
+                debug: false
+            }
+        },
+        scene: {
+            preload: preload,
+            create: create,
+            update: update  
+        }
+    };
+
+    var player;
+    var stars;
+    var bombs;
+    var crunchSound;
+    var platforms;
+    var cursors;
+    var score = 0;
+    var gameOver = false;
+    var scoreText;
+    var health = 100;
+    var maxHealth = 100;
+    let halfWindowHeight = window.screen.availHeight/2;
+    let halfWindowWidth = window.screen.availWidth/2;
+
+
+
+    var game = new Phaser.Game(config);
+
+    function preload ()
+    {
+        this.load.image('sky', 'assets/sky.png');
+        this.load.image('ldude', 'assets/little_dude.png');
+        this.load.image('ground', 'assets/platform.png');
+        this.load.image('ground2', 'assets/platform2.png');
+        this.load.image('star', 'assets/star.png');
+        this.load.image('forest', 'assets/forest.png');
+        this.load.image('brocolis', 'assets/brocolis.png');
+        this.load.image('bomb', 'assets/bomb.png');
+        this.load.image('hamburger', 'assets/hamburger.png');
+        this.load.image('sky2', 'assets/mont.jpg');
+        this.load.image('boost', 'assets/boost.png');
+
+        this.load.audio("death", ["assets/effect1.mp3"]);
+        this.load.audio("starSound", ["assets/effect2.mp3"]);
+        this.load.audio("jump", ["assets/jump.mp3"]);
+        this.load.audio("crunch", ["assets/crunch.mp3"]);
+
+
+        this.load.spritesheet('dude', 
+        'assets/no_hb_little_dude.png',
+        { frameWidth: 48, frameHeight: 88 }
+        );
+
+        this.load.image('fundo-cor', 'assets/fundo floresta-cor.png');
+        this.load.image('fundo-fundo', 'assets/fundo floresta-fundo.png');
+        this.load.image('fundo-meio', 'assets/fundo floresta-meio.png');
+        this.load.image('fundo-frente', 'assets/fundo floresta-frente.png');
+
+        this.load.image('bar-outline', 'assets/bar-outline.png');
+        this.load.image('bar1', 'assets/health-bar.png');
+        this.load.image('bar2', 'assets/health-bar2.png');
+        this.load.image('bar3', 'assets/health-bar3.png');
+
+    }
+
+
+
+    const createAligned = (scene, count, texture, scrollFactor) =>{
+        let x = 0
+        for(let i = 0; i < count; ++i){
+            const m = scene.add.image(x, scene.scale.height, texture).setOrigin(0, 1).setScrollFactor(scrollFactor)
+            x += m.width
+        }
+    }
+
+
+
+
+    function create ()
+    {
+        
+        crunchSound = this.sound.add("crunch", { loop: false });
+        death = this.sound.add("death", { loop: false });
+        starSound = this.sound.add("starSound", {volume: 0.1}, { loop: false }, {allowMultiple: true});
+        jump = this.sound.add("jump", {volume: 0.1}, { loop: false });
+        platforms = this.physics.add.staticGroup();
+        boost = this.physics.add.staticGroup();
+        
+        //fundos
+
+        const width = this.scale.width
+        const height = this.scale.height
+
+        this.add.image(width*0.5, height*0.5, 'fundo-cor').setScrollFactor(0);
+        // this.add.image(0, height, 'fundo-fundo').setOrigin(0, 1).setScrollFactor(.33);
+        // this.add.image(0, height, 'fundo-meio').setOrigin(0, 1).setScrollFactor(.66);
+        // this.add.image(0, height, 'fundo-frente').setOrigin(0, 1).setScrollFactor(1);
+
+        createAligned(this, 2, 'fundo-fundo', 0.2)
+        createAligned(this, 5, 'fundo-meio', 0.33)
+        createAligned(this, 10, 'fundo-frente', 0.66)
+
+        
+
+        //chao
+        let varWidth = 900
+        for(i = 0; i<10; ++i){
+            platforms.create(varWidth, 1000, 'ground2').refreshBody();
+            varWidth += varWidth
+        }
+        
+        // let platAmount = 10
+        // while(platAmount > 0){
+        //     var randPos1 = Phaser.Math.Between(400, 1300);
+        //     var randPos2 = Phaser.Math.Between(500, 900);
+            
+        //     platforms.create(randPos1, randPos2, 'ground');
+        //     platAmount--;
+        // }
+
+        //plataformas
+        platforms.create(600, 800, 'ground');
+        platforms.create(50, 750, 'ground');
+        platforms.create(750, 520, 'ground');
+
+        
+
+        boost.create(1400, 700, 'boost');
+        
+
+        //JOGADOR E CURSOR..
+        cursors = this.input.keyboard.createCursorKeys();
+
+        player = this.physics.add.sprite(100, 400, 'dude');
+        //player bounce
+        //player.setBounce(0.2);
+        player.setCollideWorldBounds(false);
+
+        this.anims.create({
+            key: 'left',
+            frames: this.anims.generateFrameNumbers('dude', { start: 0, end: 8 }),
+            frameRate: 13,
+            repeat: -1
+        });
+
+        //idle
+        this.anims.create({
+            key: 'turn',
+            frames: this.anims.generateFrameNumbers('dude', { start: 9, end: 10 }),
+            frameRate: 2,
+            repeat: -1
+        });
+
+        this.anims.create({
+            key: 'right',
+            frames: this.anims.generateFrameNumbers('dude', { start: 11, end: 19}),
+            frameRate: 13,
+            repeat: -1
+        });
+
+        // this.anims.create({
+        //     key: 'down',
+        //     frames: [ { key: 'dude', frame: 9 } ],
+        //     frameRate: 10,
+        // });
+        this.physics.add.collider(player, platforms);
+        
+
+        //stars/brocolis...
+
+
+        stars = this.physics.add.group({
+            key: 'brocolis',
+            repeat: 2,
+            setXY: { x: 12, y: 0, stepX: 70 }
+        });
+
+        stars.children.iterate(function (child) {
+
+            child.setBounceY(Phaser.Math.FloatBetween(0.1, 0.3));
+
+        });
+
+        this.physics.add.collider(stars, platforms);
+
+        this.physics.add.overlap(player, boost, boostJump, null, this);
+        this.physics.add.overlap(player, stars, collectStar, null, this);
+        let overlapBooster = false
+        function boostJump(player, boost){
+
+                if(!overlapBooster){
+                    boost.setTint(0xff0000);
+                    player.setVelocityY(-730)
+                }
+                
+                overlapBooster = true
+        }
+
+        //SCORE
+        var score = 0;
+        var scoreText;
+        scoreText = this.add.text(16, 16, 'Score: 0', { fontSize: '32px', fill: '#000' }).setScrollFactor(0);
+
+       //Barras de vida...
+        var healthText;
+        healthText = this.add.text(325,16, 'Health:', {fontSize: '32px', fill: '#000' }).setScrollFactor(0);
+        var barBackground, barOutline;
+        barBackground = this.add.image(600, 20, 'bar3').setScrollFactor(0);
+        var healthBar = this.add.image(600, 20, 'bar1').setScrollFactor(0);
+        var healthBarOutline = this.add.image(600, 20, 'bar-outline').setScrollFactor(0);
+
+        
+        function damagePlayer(damage){
+            health -= damage
+            if(health > maxHealth){
+                health = maxHealth
+            }
+            if(health <= 0){
+                death.play()
+
+                player.setTint(0xff0000);
+                player.anims.play('turn');
+
+                //gameOver = true;
+
+                alert("Fim de jogo");
+                location.reload();
+            }
+
+            healthBar.setScale(health/100, 1)
+        }
+
+        function healPlayer(heal){
+            
+            health += heal
+            if(health > maxHealth){
+                health = maxHealth
+            }
+
+            healthBar.setScale(health/100, 1)
+        }
+
+
+
+        function collectStar (player, star)
+        {
+            //Barulho da estrela...
+            starSound.play()
+            star.disableBody(true, true);
+            score += 10;
+            healPlayer(10)
+            scoreText.setText('Score: ' + score);
+            
+            if (stars.countActive(true) === 0)
+            {
+                stars.children.iterate(function (child) {
+
+                    child.enableBody(true, child.x, 0, true, true);
+
+                });
+
+                var x = (player.x < 400) ? Phaser.Math.Between(400, 800) : Phaser.Math.Between(0, 400);
+
+                var bomb = bombs.create(x, 16, 'hamburger');
+                bomb.setBounce(1);
+                bomb.setCollideWorldBounds(false);
+                bomb.setVelocity(Phaser.Math.Between(-200, 200), 20);
+
+            }
+        }
+
+
+        //BOMBAS....
+        bombs = this.physics.add.group();
+
+        this.physics.add.collider(bombs, platforms);
+
+        this.physics.add.collider(player, bombs, hitBomb, null, this);
+        
+        function hitBomb (player, bomb)
+        {
+            damagePlayer(20);
+            bomb.disableBody(true, true);
+            crunchSound.play()
+        }
+        this.cameras.main.setBounds(0, 0, 2000000, height)
+    }
+
+
+
+
+
+function update ()
+{
+    const cam = this.cameras.main
+    const speed = 2
+    cam.startFollow(player)
+    if (cursors.left.isDown)
+    {
+        player.setVelocityX(-350);
+
+        player.anims.play('left', true);
+
+        cam.scrollX -=speed
+    }
+    else if (cursors.right.isDown)
+    {
+        player.setVelocityX(350);
+
+        player.anims.play('right', true);
+
+        cam.scrollX +=speed
+    }
+    else
+    {
+        player.setVelocityX(0);
+
+        player.anims.play('turn', true);
+    }
+
+    if (cursors.up.isDown)
+    {
+        player.setVelocityY(-530);
+        jump.play();
+    }
+    else if (cursors.down.isDown /*&& !player.body.touching.down*/)
+    {
+        player.setVelocityY(530);
+    }
+}
+
+</script>
+
+</body>
+</html>
