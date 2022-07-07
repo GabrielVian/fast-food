@@ -28,7 +28,7 @@ class Scene1 extends Phaser.Scene{
         this.load.image('strawParticles', 'assets/straw.png')
         this.load.image('breadParticles', 'assets/bread-particle.png')
         this.load.image('apple', 'assets/apple.png')
-
+        this.load.image('fade', 'assets/blackScreen.png');
         
         this.load.audio("soda", ["assets/can.mp3"]);
         this.load.audio("death", ["assets/effect1.mp3"]);
@@ -49,6 +49,10 @@ class Scene1 extends Phaser.Scene{
         'assets/soda.png',
         { frameWidth: 104, frameHeight: 152 }
         );
+        this.load.spritesheet('jumpPlayer', 
+        'assets/ldudeJump.png',
+        { frameWidth: 116, frameHeight: 192 }
+        );
 
         this.load.image('fundo-cor', 'assets/fundo floresta-cor.png');
         this.load.image('fundo-fundo', 'assets/fundo floresta-fundo.png');
@@ -65,6 +69,19 @@ class Scene1 extends Phaser.Scene{
 
     create ()
     {
+
+
+    const fade = this.load.image('fade');
+    this.tweens.add({
+        targets: fade,
+        x: 100,
+        ease: 'Sine.easeInOut',
+        yoyo: true,
+        repeat: -1,
+        duration: 3000
+    });
+    
+    this.cameras.main.fadeIn(1500);
 
     //var player;
     //var hamburgerMinion;
@@ -109,8 +126,8 @@ class Scene1 extends Phaser.Scene{
         this.sodaSound = this.sound.add("soda", { loop: false })
         this.crunchSound = this.sound.add("crunch", { loop: false });
         this.death = this.sound.add("death", { loop: false });
-        this.starSound = this.sound.add("starSound", {volume: 0.1}, { loop: false }, {allowMultiple: true});
-        this.jump = this.sound.add("jump", {volume: 0.1}, { loop: false });
+        this.starSound = this.sound.add("starSound", {volume: 0.08}, { loop: false }, {allowMultiple: true});
+        this.jump = this.sound.add("jump", {volume: .08}, { loop: false });
         this.platforms = this.physics.add.staticGroup();
         this.noHitBoxPlatforms = this.physics.add.staticGroup();
         this.boost = this.physics.add.staticGroup();
@@ -284,7 +301,7 @@ class Scene1 extends Phaser.Scene{
 
 
 
-        this.player = this.physics.add.sprite(100, 850, 'dude').setInteractive(this.input.makePixelPerfect());;
+        this.player = this.physics.add.sprite(100, 850, 'dude').setInteractive({ pixelPerfect: true });
         //player bounce
         //player.setBounce(0.2);
         this.player.setCollideWorldBounds(false);
@@ -315,8 +332,8 @@ class Scene1 extends Phaser.Scene{
         });
         this.anims.create({
             key: 'jump',
-            frames: this.anims.generateFrameNumbers('dude', { start: 20, end: 22}),
-            frameRate: 5,
+            frames: this.anims.generateFrameNumbers('jumpPlayer', { start: 0, end: 1}),
+            frameRate: 3,
             repeat: 0
         });
 
@@ -386,7 +403,8 @@ class Scene1 extends Phaser.Scene{
         //SCORE
         this.score = 0;
         this.scoreImage = this.add.image(600, 34, 'score').setScrollFactor(0);
-        this.scoreText = this.add.text(700, 24, '', {fontFamily: 'CustomFont', fill: '#f2e018', fontSize: 30}).setScrollFactor(0).setPadding(10,10,10,10);
+        this.scoreText = this.add.text(700, 20, '0', {fontFamily: 'CustomFont', fill: '#f2e018', fontSize: 25}).setScrollFactor(0).setPadding(10,10,10,10);
+        this.scoreText.setText('0');
         this.scoreImage.setScale(0.3, 0.3)
         this.scoreText.setScale(0.7, 0.7)
         function damagePlayer(damage){
@@ -438,22 +456,22 @@ class Scene1 extends Phaser.Scene{
             healPlayer(10)
             this.scoreText.setText(this.score);
             
-            if (this.stars.countActive(true) === 0)
-            {
-                this.stars.children.iterate(function (child) {
+            // if (this.stars.countActive(true) === 0)
+            // {
+            //     this.stars.children.iterate(function (child) {
 
-                    child.enableBody(true, child.x, 0, true, true);
+            //         child.enableBody(true, child.x, 0, true, true);
 
-                });
+            //     });
 
-                var x = (player.x < 400) ? Phaser.Math.Between(400, 800) : Phaser.Math.Between(0, 400);
+            //     var x = (player.x < 400) ? Phaser.Math.Between(400, 800) : Phaser.Math.Between(0, 400);
 
-                // var bomb = bombs.create(x, 16, 'hamburger');
-                // bomb.setBounce(1);
-                // bomb.setCollideWorldBounds(false);
-                // bomb.setVelocity(Phaser.Math.Between(-200, 200), 20);
+            //     // var bomb = bombs.create(x, 16, 'hamburger');
+            //     // bomb.setBounce(1);
+            //     // bomb.setCollideWorldBounds(false);
+            //     // bomb.setVelocity(Phaser.Math.Between(-200, 200), 20);
 
-            }
+            // }
         }
         
         var invert = 1
@@ -552,7 +570,7 @@ class Scene1 extends Phaser.Scene{
 
         function hitSodaMinion (player, sodaMinion)
         {
-            if(player.y < sodaMinion.y){
+            if(player.y < sodaMinion.y - sodaMinion.height + 90){
                 this.splash.play();
                 player.setVelocityY(-530);
                 //
@@ -607,7 +625,7 @@ update()
 
     if (this.keyW.isDown && this.player.body.touching.down)
     {
-        this.player.anims.play('jump', true)
+        //this.player.anims.play('jump', true)
         this.player.setVelocityY(-600);
         this.jump.play();
     }
@@ -626,6 +644,8 @@ update()
     }
     else if (this.keyD.isDown)
     {
+
+
         this.player.setVelocityX(350);
 
         this.player.anims.play('right', true);

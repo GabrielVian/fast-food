@@ -13,6 +13,6 @@ var config = {
             debug: false
         }
     },
-    scene: [MenuScreen, Scene1]
+    scene: [MenuScreen, Tutorial, Scene1]
 };
 var game = new Phaser.Game(config);
